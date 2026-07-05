@@ -73,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     perception_cfg = cfg.perception
     pose = MediaPipePoseEstimator(
         model_complexity=int(perception_cfg.get("model_complexity", 1)),
+        delegate=str(perception_cfg.get("delegate", "cpu")),
         min_detection_confidence=float(
             perception_cfg.get("min_detection_confidence", 0.55)
         ),

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -11,7 +10,12 @@ from squat_ai_mvp.core.biomechanics.math_utils import (
     midpoint,
 )
 from squat_ai_mvp.core.biomechanics.math_utils import torso_angle_from_vertical
-from squat_ai_mvp.core.biomechanics.schemas import AnalysisResult, FaultEvent, PoseFrame, RepEvent
+from squat_ai_mvp.core.biomechanics.schemas import (
+    AnalysisResult,
+    FaultEvent,
+    PoseFrame,
+    RepEvent,
+)
 
 
 @dataclass
@@ -41,6 +45,7 @@ class SquatSideEngine:
         rules: dict[str, Any],
         smoothing_window: int = 5,
         min_rep_duration_ms: int = 700,
+        descent_confirm_ms: int = 300,
     ) -> None:
         self.rules = rules
         self.exercise = str(rules.get("exercise", "squat"))
@@ -51,8 +56,12 @@ class SquatSideEngine:
         self.ascent_hysteresis = float(phase_cfg.get("ascent_hysteresis", 8))
         self.depth_min_ratio = float(metric_cfg.get("depth_min_ratio", -0.015))
         self.torso_lean_max_deg = float(metric_cfg.get("torso_lean_max_deg", 45))
-        self.hip_rise_torso_delta_deg = float(metric_cfg.get("hip_rise_torso_delta_deg", 7))
-        self.hip_rise_knee_angle_max = float(metric_cfg.get("hip_rise_knee_angle_max", 135))
+        self.hip_rise_torso_delta_deg = float(
+            metric_cfg.get("hip_rise_torso_delta_deg", 7)
+        )
+        self.hip_rise_knee_angle_max = float(
+            metric_cfg.get("hip_rise_knee_angle_max", 135)
+        )
         self.min_rep_duration_ms = int(min_rep_duration_ms)
         self.smoother = MedianSmoother(smoothing_window)
         self.phase = "setup"
@@ -60,10 +69,16 @@ class SquatSideEngine:
         self.rep = RepState()
         self.last_knee_angle: Optional[float] = None
         self.last_phase_change_ms = 0
+        # Sustained descent guard: knee must stay below threshold for N ms
+        # to prevent noise-triggered false descent.
+        self._descent_candidate_ms: Optional[int] = None
+        self._descent_confirm_ms = descent_confirm_ms
 
     def analyze(self, pose: Optional[PoseFrame]) -> AnalysisResult:
         if pose is None:
-            return AnalysisResult(phase=self.phase, rep_id=self.rep_id, metrics={"pose_ok": False})
+            return AnalysisResult(
+                phase=self.phase, rep_id=self.rep_id, metrics={"pose_ok": False}
+            )
 
         metrics = self._extract_metrics(pose)
         now_ms = pose.frame.timestamp_ms
@@ -85,7 +100,12 @@ class SquatSideEngine:
 
         knee_angle = metrics.get("knee_angle")
         if knee_angle is None:
-            return AnalysisResult(phase=self.phase, rep_id=self.rep_id, metrics=metrics, fault_events=faults)
+            return AnalysisResult(
+                phase=self.phase,
+                rep_id=self.rep_id,
+                metrics=metrics,
+                fault_events=faults,
+            )
 
         previous_phase = self.phase
         rep_event: Optional[RepEvent] = None
@@ -96,10 +116,20 @@ class SquatSideEngine:
 
         if self.phase in ("setup", "lockout"):
             if knee_angle < self.up_angle - 8:
-                self.phase = "descent"
-                self.rep = RepState(start_ms=now_ms)
-                self._update_rep_metrics(metrics, now_ms)
+                # Sustained descent guard: knee must stay below threshold for N ms.
+                # With confirm=0, transition immediately on first frame.
+                if self._descent_candidate_ms is None:
+                    self._descent_candidate_ms = now_ms
+                    if self._descent_confirm_ms <= 0:
+                        self.phase = "descent"
+                        self.rep = RepState(start_ms=now_ms)
+                        self._update_rep_metrics(metrics, now_ms)
+                elif now_ms - self._descent_candidate_ms >= self._descent_confirm_ms:
+                    self.phase = "descent"
+                    self.rep = RepState(start_ms=now_ms)
+                    self._update_rep_metrics(metrics, now_ms)
             else:
+                self._descent_candidate_ms = None
                 self.phase = "lockout"
 
         elif self.phase == "descent":
@@ -108,7 +138,10 @@ class SquatSideEngine:
                 self.rep.bottom_ms = now_ms
                 self.rep.bottom_torso_angle = metrics.get("torso_angle")
                 self.rep.hip_y_at_bottom = metrics.get("hip_y")
-            elif self.last_knee_angle is not None and knee_angle > self.last_knee_angle + self.ascent_hysteresis:
+            elif (
+                self.last_knee_angle is not None
+                and knee_angle > self.last_knee_angle + self.ascent_hysteresis
+            ):
                 # User reversed before reaching bottom angle. Treat as shallow bottom.
                 self.phase = "ascent"
                 self.rep.bottom_ms = now_ms
@@ -121,7 +154,13 @@ class SquatSideEngine:
                     message=self._fault_message("depth_not_enough"),
                     now_ms=now_ms,
                     confidence=0.75,
-                    evidence={"max_depth_ratio": self.rep.max_depth_ratio, "min_knee_angle": self.rep.min_knee_angle},
+                    evidence={
+                        "gap_deg": round(
+                            max(0, self.rep.min_knee_angle - self.bottom_angle), 1
+                        ),
+                        "knee_angle": round(self.rep.min_knee_angle, 1),
+                        "target": self.bottom_angle,
+                    },
                 )
                 faults.append(fault)
 
@@ -137,7 +176,14 @@ class SquatSideEngine:
                             message=self._fault_message("depth_not_enough"),
                             now_ms=now_ms,
                             confidence=0.8,
-                            evidence={"max_depth_ratio": self.rep.max_depth_ratio, "threshold": self.depth_min_ratio},
+                            evidence={
+                                "gap_deg": round(
+                                    max(0, self.rep.min_knee_angle - self.bottom_angle),
+                                    1,
+                                ),
+                                "knee_angle": round(self.rep.min_knee_angle, 1),
+                                "target": self.bottom_angle,
+                            },
                         )
                     )
 
@@ -240,7 +286,9 @@ class SquatSideEngine:
         if depth is not None:
             self.rep.max_depth_ratio = max(self.rep.max_depth_ratio, float(depth))
 
-    def _check_torso_lean(self, metrics: dict[str, Any], now_ms: int) -> Optional[FaultEvent]:
+    def _check_torso_lean(
+        self, metrics: dict[str, Any], now_ms: int
+    ) -> Optional[FaultEvent]:
         torso = metrics.get("torso_angle")
         if torso is None or self.phase not in ("descent", "bottom", "ascent"):
             self.rep.torso_fault_active_since = None
@@ -260,10 +308,16 @@ class SquatSideEngine:
             message=self._fault_message("torso_lean_too_much"),
             now_ms=now_ms,
             confidence=min(0.95, 0.55 + (torso - self.torso_lean_max_deg) / 30),
-            evidence={"torso_angle": round(float(torso), 2), "threshold": self.torso_lean_max_deg},
+            evidence={
+                "excess_deg": round(float(torso) - self.torso_lean_max_deg, 1),
+                "torso_angle": round(float(torso), 2),
+                "threshold": self.torso_lean_max_deg,
+            },
         )
 
-    def _check_hip_rise(self, metrics: dict[str, Any], now_ms: int) -> Optional[FaultEvent]:
+    def _check_hip_rise(
+        self, metrics: dict[str, Any], now_ms: int
+    ) -> Optional[FaultEvent]:
         if self.rep.hip_rise_fault_emitted or self.phase != "ascent":
             return None
         torso = metrics.get("torso_angle")
@@ -271,7 +325,10 @@ class SquatSideEngine:
         if torso is None or knee is None or self.rep.bottom_torso_angle is None:
             return None
         torso_delta = float(torso) - float(self.rep.bottom_torso_angle)
-        if knee <= self.hip_rise_knee_angle_max and torso_delta >= self.hip_rise_torso_delta_deg:
+        if (
+            knee <= self.hip_rise_knee_angle_max
+            and torso_delta >= self.hip_rise_torso_delta_deg
+        ):
             self.rep.hip_rise_fault_emitted = True
             return self._rep_fault(
                 code="hip_rise_too_early",
@@ -327,9 +384,17 @@ class SquatSideEngine:
             confidence=float(confidence),
             start_ms=now_ms,
             end_ms=now_ms,
-            message=message,
+            message=self._format_fault_message(code, evidence),
             evidence=evidence,
         )
+
+    def _format_fault_message(self, code: str, evidence: dict[str, Any]) -> str:
+        """Fill {placeholders} in the rule message with evidence values."""
+        template = self._fault_message(code)
+        try:
+            return template.format(**evidence)
+        except (KeyError, ValueError, TypeError):
+            return template
 
     def _fault_message(self, code: str) -> str:
         return str(self.rules.get("faults", {}).get(code, {}).get("message", code))

@@ -94,17 +94,16 @@ POSE_CONNECTIONS = [
 
 
 def _ensure_model(complexity: int = 1) -> Path:
-    """Return path to the pose landmarker model, downloading if missing."""
-    model_path = _MODEL_PATHS.get(complexity, _MODEL_PATHS[1])
+    """Return path to the pose landmarker model, downloading if missing.
+
+    complexity: 0=Lite, 1=Full (default), 2=Heavy
+    """
+    complexity = max(0, min(2, int(complexity)))
+    model_path = _MODEL_PATHS[complexity]  # 0:Lite, 1:Full, 2:Heavy
     if model_path.exists():
         return model_path
-    # Fallback: try the lite model for any complexity
-    lite = _MODEL_PATHS[0]
-    if lite.exists():
-        return lite
-    # Download lite model as default
     _MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    url = _MODEL_URLS.get(complexity, _MODEL_URLS[1])
+    url = _MODEL_URLS[complexity]
     print(f"[perception] Downloading pose model ({url})...")
     import urllib.request
 
@@ -123,6 +122,7 @@ class MediaPipePoseEstimator:
     def __init__(
         self,
         model_complexity: int = 1,
+        delegate: str = "cpu",
         min_detection_confidence: float = 0.55,
         min_tracking_confidence: float = 0.55,
         min_keypoint_score: float = 0.45,
@@ -131,14 +131,24 @@ class MediaPipePoseEstimator:
         _lazy_import_mediapipe()
 
         model_path = _ensure_model(model_complexity)
+        if delegate == "gpu":
+            print("[perception] WARNING: GPU delegate may crash on macOS Python (Metal format bug).")
+            print("[perception] Set delegate=cpu in config if crashes occur.")
+        delegate_enum = _BaseOptions.Delegate.GPU if delegate == "gpu" else _BaseOptions.Delegate.CPU
         options = _PoseLandmarkerOptions(
-            base_options=_BaseOptions(model_asset_path=str(model_path)),
+            base_options=_BaseOptions(model_asset_path=str(model_path), delegate=delegate_enum),
             running_mode=_RunningMode.IMAGE,
             min_pose_detection_confidence=min_detection_confidence,
             min_pose_presence_confidence=min_detection_confidence,
             min_tracking_confidence=min_tracking_confidence,
         )
-        self._landmarker = _PoseLandmarker.create_from_options(options)
+        try:
+            self._landmarker = _PoseLandmarker.create_from_options(options)
+        except Exception as exc:
+            # GPU delegate may fail (e.g. Metal unavailable). Fall back to CPU.
+            print(f"[perception] GPU delegate failed ({exc}); falling back to CPU")
+            options.base_options.delegate = _BaseOptions.Delegate.CPU
+            self._landmarker = _PoseLandmarker.create_from_options(options)
 
     def close(self) -> None:
         if self._landmarker is not None:
