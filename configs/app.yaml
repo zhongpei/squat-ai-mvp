@@ -34,7 +34,12 @@ biomechanics:
 
 alert:
   enabled: true
-  tts_provider: pyttsx3     # pyttsx3 | print
+  tts_provider: pyttsx3     # pyttsx3 | say | print
+  # Voice ID for pyttsx3 (macOS voices like "Tingting", "Tingting Compact")
+  # Leave empty for auto-select Chinese voice.
+  voice_id: ~
+  # macOS ``say`` command voice (only used when tts_provider: say)
+  say_voice: Tingting
   min_fault_duration_ms: 250
   same_fault_cooldown_ms: 2500
   max_alerts_per_rep: 2
