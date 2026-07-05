@@ -1,0 +1,27 @@
+# Minimal MediaMTX config for MVP.
+# Phone pushes: rtmp://<computer_lan_ip>:1935/live/side
+# App reads:    rtsp://127.0.0.1:8554/live/side
+
+logLevel: info
+
+rtsp: yes
+rtspAddress: :8554
+
+rtmp: yes
+rtmpAddress: :1935
+
+hls: yes
+hlsAddress: :8888
+
+webrtc: yes
+webrtcAddress: :8889
+
+api: yes
+apiAddress: :9997
+
+metrics: yes
+metricsAddress: :9998
+
+paths:
+  all:
+    source: publisher

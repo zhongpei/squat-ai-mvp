@@ -1,0 +1,50 @@
+session:
+  exercise: squat
+  save_dir: ./sessions
+  save_raw_video: false
+  save_overlay_video: true
+
+stream:
+  # Phone pushes RTMP to MediaMTX:
+  #   rtmp://<computer_lan_ip>:1935/live/side
+  # This app reads RTSP from MediaMTX:
+  input_url: rtsp://127.0.0.1:8554/live/side
+  camera_id: side_phone_1
+  camera_role: side
+  expected_fps: 30
+  reconnect: true
+  reconnect_interval_sec: 2.0
+  buffer_size: 1
+  rotate: 0          # 0, 90, 180, 270
+  mirror: false
+  max_width: 1280
+
+perception:
+  backend: mediapipe
+  model_complexity: 1       # 0 fast, 1 balanced, 2 accurate
+  min_detection_confidence: 0.55
+  min_tracking_confidence: 0.55
+  inference_fps: 20
+  min_keypoint_score: 0.45
+
+biomechanics:
+  rules_file: rules/squat.side.yaml
+  smoothing_window: 5
+  min_rep_duration_ms: 700
+
+alert:
+  enabled: true
+  tts_provider: pyttsx3     # pyttsx3 | print
+  min_fault_duration_ms: 250
+  same_fault_cooldown_ms: 2500
+  max_alerts_per_rep: 2
+  max_alerts_per_set: 30
+  voice_rate: 185
+  voice_volume: 1.0
+
+ui:
+  enabled: true
+  window_name: Squat AI MVP
+  draw_skeleton: true
+  draw_metrics: true
+  quit_key: q
