@@ -2,7 +2,19 @@ services:
   mediamtx:
     image: bluenviron/mediamtx:latest
     container_name: squat-ai-mediamtx
-    network_mode: host
     restart: unless-stopped
+    ports:
+      # RTMP — phone pushes here
+      - "1935:1935"
+      # RTSP — app reads from here
+      - "8554:8554"
+      # HLS preview
+      - "8888:8888"
+      # WebRTC preview
+      - "8889:8889"
+      # Management API
+      - "9997:9997"
+      # Prometheus metrics
+      - "9998:9998"
     volumes:
       - ./deploy/mediamtx.yml:/mediamtx.yml:ro

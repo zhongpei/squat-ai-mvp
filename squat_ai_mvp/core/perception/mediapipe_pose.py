@@ -29,14 +29,14 @@ def _lazy_import_mediapipe():
 
     _MediaPipe = mp
     from mediapipe.tasks.python.vision import (
-        PoseLandmarker,               # noqa: N812
-        PoseLandmarkerOptions,        # noqa: N812
-        PoseLandmark,                 # noqa: N812
-        RunningMode,                  # noqa: N812
+        PoseLandmarker,  # noqa: N812
+        PoseLandmarkerOptions,  # noqa: N812
+        PoseLandmark,  # noqa: N812
+        RunningMode,  # noqa: N812
     )
     from mediapipe.tasks.python import BaseOptions  # noqa: N812
-    from mediapipe import Image as MpImage           # noqa: N812
-    from mediapipe import ImageFormat                # noqa: N812
+    from mediapipe import Image as MpImage  # noqa: N812
+    from mediapipe import ImageFormat  # noqa: N812
 
     _PoseLandmarker = PoseLandmarker
     _PoseLandmarkerOptions = PoseLandmarkerOptions
@@ -177,4 +177,9 @@ class MediaPipePoseEstimator:
         if xs and ys:
             bbox = (min(xs), min(ys), max(xs), max(ys))
         mean_score = float(np.mean(scores)) if scores else 0.0
-        return PoseFrame(frame=video_frame.event, keypoints=keypoints, bbox=bbox, mean_score=mean_score)
+        return PoseFrame(
+            frame=video_frame.event,
+            keypoints=keypoints,
+            bbox=bbox,
+            mean_score=mean_score,
+        )
