@@ -8,13 +8,20 @@ from squat_ai_mvp.core.perception.mediapipe_pose import POSE_CONNECTIONS
 
 
 class OpenCVView:
-    def __init__(self, window_name: str = "Squat AI MVP", draw_skeleton: bool = True, draw_metrics: bool = True) -> None:
+    def __init__(
+        self,
+        window_name: str = "Squat AI MVP",
+        draw_skeleton: bool = True,
+        draw_metrics: bool = True,
+    ) -> None:
         self.window_name = window_name
         self.draw_skeleton = draw_skeleton
         self.draw_metrics = draw_metrics
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
 
-    def render(self, image_bgr: np.ndarray, pose: PoseFrame | None, result: AnalysisResult) -> np.ndarray:
+    def render(
+        self, image_bgr: np.ndarray, pose: PoseFrame | None, result: AnalysisResult
+    ) -> np.ndarray:
         frame = image_bgr.copy()
         if self.draw_skeleton and pose is not None:
             self._draw_skeleton(frame, pose)
@@ -35,7 +42,9 @@ class OpenCVView:
             kb = pose.keypoints.get(b)
             if not ka or not kb or ka.score < 0.35 or kb.score < 0.35:
                 continue
-            cv2.line(frame, (int(ka.x), int(ka.y)), (int(kb.x), int(kb.y)), (0, 255, 0), 2)
+            cv2.line(
+                frame, (int(ka.x), int(ka.y)), (int(kb.x), int(kb.y)), (0, 255, 0), 2
+            )
         for kp in pose.keypoints.values():
             if kp.score < 0.35:
                 continue
@@ -56,12 +65,22 @@ class OpenCVView:
         ]
         y = 28
         for line in lines:
-            cv2.putText(frame, line, (16, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
+            cv2.putText(
+                frame, line, (16, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2
+            )
             y += 26
         if result.fault_events:
             fault = result.fault_events[-1]
             text = f"FAULT: {fault.code} ({fault.severity})"
-            cv2.putText(frame, text, (16, y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+            cv2.putText(
+                frame,
+                text,
+                (16, y + 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.75,
+                (0, 0, 255),
+                2,
+            )
 
 
 def fmt(v, ndigits: int = 1) -> str:
