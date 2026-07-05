@@ -50,7 +50,10 @@ class TestLoadConfig:
         config_dir = tmp_path / "configs"
         config_dir.mkdir()
         cfg_file = config_dir / "app.yaml"
-        cfg_file.write_text("session:\n  exercise: squat\nstream:\n  input_url: rtsp://test\n", encoding="utf-8")
+        cfg_file.write_text(
+            "session:\n  exercise: squat\nstream:\n  input_url: rtsp://test\n",
+            encoding="utf-8",
+        )
         cfg = load_config(cfg_file)
         assert cfg.session["exercise"] == "squat"
         assert cfg.stream["input_url"] == "rtsp://test"

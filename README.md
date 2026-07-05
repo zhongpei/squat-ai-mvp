@@ -26,19 +26,24 @@ The current perception backend is MediaPipe Pose because it is the fastest path 
 - Phone and computer on the same WiFi
 - Docker optional, only for MediaMTX
 
-## 1. Install Python dependencies
+## 1. Install (uv + Make)
 
 ```bash
-cd squat_ai_mvp
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install -r requirements.txt
+make install
+# or manually:
+uv venv
+uv sync --dev
 ```
 
 If `pyttsx3` has audio issues on your machine, run with `--tts print` first.
 
-## 2. Start MediaMTX
+## 2. Run tests
+
+```bash
+make test
+```
+
+## 3. Start MediaMTX
 
 Using Docker Compose:
 
@@ -107,7 +112,11 @@ Place the phone at side view for squats.
 ## 5. Run the MVP
 
 ```bash
-python run.py --config configs/app.yaml
+make run
+# or with custom args:
+make run ARGS='--tts print --no-ui'
+# or directly:
+uv run python run.py --config configs/app.yaml
 ```
 
 The app reads:
@@ -207,4 +216,20 @@ rules/squat.side.yaml
 deploy/mediamtx.yml
 docker-compose.yml
 run.py
+Makefile             uv + test + docker targets
 ```
+
+## Make targets
+
+| Command | Action |
+|---------|--------|
+| `make install` | Create venv + install all deps |
+| `make test` | Run tests (verbose) |
+| `make test-quiet` | Run tests (quiet) |
+| `make dev` | Watch mode: re-run tests on file change |
+| `make lint` | Ruff linter |
+| `make fmt` | Ruff formatter |
+| `make run` | Run the app |
+| `make docker-up` | Start MediaMTX gateway |
+| `make docker-down` | Stop MediaMTX |
+| `make clean` | Remove venv + caches |

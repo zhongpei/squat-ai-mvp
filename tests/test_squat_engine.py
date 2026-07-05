@@ -27,7 +27,9 @@ def _kp(name: str, x: float, y: float, score: float = 1.0) -> Keypoint:
     return Keypoint(name=name, x=x, y=y, score=score)
 
 
-def _make_frame(frame_id: int, ts_ms: int, kps: dict[str, Keypoint], score: float = 0.9) -> PoseFrame:
+def _make_frame(
+    frame_id: int, ts_ms: int, kps: dict[str, Keypoint], score: float = 0.9
+) -> PoseFrame:
     ev = FrameEvent("s1", "c1", "side", frame_id, ts_ms, 1280, 720, 30.0)
     xs = [k.x for k in kps.values() if k.score >= 0.35]
     ys = [k.y for k in kps.values() if k.score >= 0.35]
@@ -55,7 +57,9 @@ def _standing_pose(frame_id: int, ts_ms: int) -> PoseFrame:
     return _make_frame(frame_id, ts_ms, kps)
 
 
-def _bent_pose(frame_id: int, ts_ms: int, knee_deg: float = 100, torso_deg: float = 30) -> PoseFrame:
+def _bent_pose(
+    frame_id: int, ts_ms: int, knee_deg: float = 100, torso_deg: float = 30
+) -> PoseFrame:
     """Side-view bent knee position. Returns verified angles within ±0.5deg."""
     offset_angle = math.radians((180 - knee_deg) / 2)
     x_off = 200 * math.tan(offset_angle) if abs(math.cos(offset_angle)) > 1e-6 else 200
@@ -66,8 +70,12 @@ def _bent_pose(frame_id: int, ts_ms: int, knee_deg: float = 100, torso_deg: floa
 
     hip_x, hip_y = 500, 300
     kps = {
-        "left_shoulder": _kp("left_shoulder", hip_x - 20 + shoulder_forward, hip_y - shoulder_up),
-        "right_shoulder": _kp("right_shoulder", hip_x + 20 + shoulder_forward, hip_y - shoulder_up),
+        "left_shoulder": _kp(
+            "left_shoulder", hip_x - 20 + shoulder_forward, hip_y - shoulder_up
+        ),
+        "right_shoulder": _kp(
+            "right_shoulder", hip_x + 20 + shoulder_forward, hip_y - shoulder_up
+        ),
         "left_hip": _kp("left_hip", hip_x - 20, hip_y),
         "right_hip": _kp("right_hip", hip_x + 20, hip_y),
         "left_knee": _kp("left_knee", hip_x - 20 + x_off, hip_y + 200),
@@ -184,7 +192,9 @@ class TestDepthFault:
         engine.analyze(_standing_pose(0, 0))
         engine.analyze(_bent_pose(1, 33, knee_deg=145))  # descent
         engine.analyze(_bent_pose(2, 66, knee_deg=140))  # deeper
-        r = engine.analyze(_bent_pose(3, 99, knee_deg=150))  # reversed (150 > 140+8=148)
+        r = engine.analyze(
+            _bent_pose(3, 99, knee_deg=150)
+        )  # reversed (150 > 140+8=148)
         assert any(f.code == "depth_not_enough" for f in r.fault_events), (
             f"No depth fault in {[f.code for f in r.fault_events]}"
         )
@@ -251,11 +261,15 @@ class TestGoodSquat:
         r = engine.analyze(_standing_pose(0, 0))
         # Descent deep with normal lean
         for i, deg in enumerate([150, 140, 130, 120, 110, 105]):
-            r = engine.analyze(_bent_pose(1 + i, 33 + i * 33, knee_deg=deg, torso_deg=30))
+            r = engine.analyze(
+                _bent_pose(1 + i, 33 + i * 33, knee_deg=deg, torso_deg=30)
+            )
         assert r.phase == "bottom"
         # Ascend with synchronized movement
         for i, deg in enumerate([115, 125, 135, 145, 155, 160]):
-            r = engine.analyze(_bent_pose(10 + i, 300 + i * 33, knee_deg=deg, torso_deg=30))
+            r = engine.analyze(
+                _bent_pose(10 + i, 300 + i * 33, knee_deg=deg, torso_deg=30)
+            )
 
         all_faults = sum(len(r.fault_events) for r in [r])
         assert all_faults == 0, "Expected no faults, got faults"

@@ -11,11 +11,13 @@ dependencies = [
     "pyttsx3>=2.90",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest>=8.0"]
-
 [project.scripts]
 squat-ai-mvp = "squat_ai_mvp.main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

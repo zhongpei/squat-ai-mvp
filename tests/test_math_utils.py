@@ -109,7 +109,10 @@ class TestTorsoAngle:
         assert 10 < angle < 60  # some lean
 
     def test_invalid(self):
-        assert torso_angle_from_vertical(_kp("s", 100, 200, 0.1), _kp("h", 100, 300)) is None
+        assert (
+            torso_angle_from_vertical(_kp("s", 100, 200, 0.1), _kp("h", 100, 300))
+            is None
+        )
 
     def test_flat_line(self):
         shoulder = _kp("s", 10, 100)

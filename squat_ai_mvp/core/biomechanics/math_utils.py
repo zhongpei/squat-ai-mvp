@@ -30,10 +30,14 @@ def angle_deg(a: Keypoint, b: Keypoint, c: Keypoint) -> Optional[float]:
 def midpoint(a: Keypoint, b: Keypoint, name: str = "mid") -> Optional[Keypoint]:
     if not (valid(a) and valid(b)):
         return None
-    return Keypoint(name=name, x=(a.x + b.x) / 2, y=(a.y + b.y) / 2, score=min(a.score, b.score))
+    return Keypoint(
+        name=name, x=(a.x + b.x) / 2, y=(a.y + b.y) / 2, score=min(a.score, b.score)
+    )
 
 
-def torso_angle_from_vertical(shoulder_mid: Keypoint, hip_mid: Keypoint) -> Optional[float]:
+def torso_angle_from_vertical(
+    shoulder_mid: Keypoint, hip_mid: Keypoint
+) -> Optional[float]:
     if not (valid(shoulder_mid) and valid(hip_mid)):
         return None
     dx = shoulder_mid.x - hip_mid.x

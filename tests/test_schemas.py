@@ -36,11 +36,19 @@ def test_keypoint():
 def test_pose_frame():
     kp = Keypoint("nose", 100, 200, 0.9)
     ev = FrameEvent("s1", "c1", "side", 1, 0, 1280, 720, 30.0)
-    pf = PoseFrame(frame=ev, keypoints={"nose": kp}, bbox=(50, 50, 500, 600), mean_score=0.9)
+    pf = PoseFrame(
+        frame=ev, keypoints={"nose": kp}, bbox=(50, 50, 500, 600), mean_score=0.9
+    )
     d = pf.to_dict()
     assert d["mean_score"] == 0.9
     bbox = d["bbox"]
-    assert bbox is not None and bbox[0] == 50 and bbox[1] == 50 and bbox[2] == 500 and bbox[3] == 600
+    assert (
+        bbox is not None
+        and bbox[0] == 50
+        and bbox[1] == 50
+        and bbox[2] == 500
+        and bbox[3] == 600
+    )
     assert d["keypoints"]["nose"]["x"] == 100
 
 
@@ -52,7 +60,14 @@ def test_pose_frame_no_bbox():
 
 
 def test_rep_event():
-    rep = RepEvent(type="rep", exercise="squat", rep_id=1, start_ms=0, end_ms=1500, duration_ms=1500)
+    rep = RepEvent(
+        type="rep",
+        exercise="squat",
+        rep_id=1,
+        start_ms=0,
+        end_ms=1500,
+        duration_ms=1500,
+    )
     d = rep.to_dict()
     assert d["rep_id"] == 1
     assert d["duration_ms"] == 1500
@@ -115,9 +130,22 @@ def test_analysis_result():
 
 
 def test_analysis_result_with_rep_and_faults():
-    fault = FaultEvent("fault", "squat", 1, "ascent", "torso_lean_too_much", "medium", 0.7, 100, 200, "torso")
+    fault = FaultEvent(
+        "fault",
+        "squat",
+        1,
+        "ascent",
+        "torso_lean_too_much",
+        "medium",
+        0.7,
+        100,
+        200,
+        "torso",
+    )
     rep = RepEvent("rep", "squat", 1, 0, 1500, 1500)
-    result = AnalysisResult(phase="ascent", rep_id=1, metrics={}, rep_event=rep, fault_events=[fault])
+    result = AnalysisResult(
+        phase="ascent", rep_id=1, metrics={}, rep_event=rep, fault_events=[fault]
+    )
     d = result.to_dict()
     assert d["rep_event"]["rep_id"] == 1
     assert len(d["fault_events"]) == 1
