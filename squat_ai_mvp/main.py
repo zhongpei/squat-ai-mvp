@@ -4,6 +4,8 @@ import argparse
 import signal
 import time
 
+import cv2
+
 from squat_ai_mvp.core.alert.policy import AlertPolicy
 from squat_ai_mvp.core.alert.tts import AlertCommand, AsyncTTS, create_tts_provider
 from squat_ai_mvp.core.biomechanics.squat_engine import SquatSideEngine
@@ -140,45 +142,58 @@ def main(argv: list[str] | None = None) -> int:
 
     signal.signal(signal.SIGINT, handle_sigint)
 
+    process_every_n = int(stream_cfg.get("process_every_n", 1))
+    _frame_n = 0
     try:
         for vf in source.frames():
             if stop:
                 break
-            recorder.record_frame(vf)
-            pose_frame = pose.infer(vf)
-            recorder.record_pose(pose_frame)
-            result = engine.analyze(pose_frame)
-            recorder.record_analysis(result)
-
-            # Rep announcement always plays first (before faults).
-            if result.rep_event is not None and alert_cfg.get("rep_announce", True):
-                rep_count = result.rep_event.rep_id
-                rep_msg = f"第{rep_count}个深蹲"
-                if not result.fault_events:
-                    rep_msg += "，动作标准"
-                print(f"[rep] {rep_msg}")
-                tts.speak(rep_msg)
-                recorder.record_alert(
-                    AlertCommand(
-                        text=rep_msg, priority="info", cooldown_key=f"rep_{rep_count}"
-                    ),
-                    vf.event.timestamp_ms,
-                )
-
-            for cmd in policy.filter_faults(result.fault_events):
-                print(f"[alert] {cmd.text}")
-                tts.speak(cmd.text)
-                recorder.record_alert(cmd, vf.event.timestamp_ms)
+            _frame_n += 1
 
             if view is not None:
-                overlay = view.render(vf.image_bgr, pose_frame, result)
-                recorder.record_overlay(
-                    overlay,
-                    vf.event.fps_est or float(stream_cfg.get("expected_fps", 30)),
-                )
-                key = view.show(overlay)
-                if key == ord(quit_key):
+                # Poll key every frame to stay responsive.
+                if cv2.waitKey(1) == ord(quit_key):
                     break
+
+            if _frame_n % process_every_n == 0:
+                # Full processing: infer → analyze → render.
+                recorder.record_frame(vf)
+                pose_frame = pose.infer(vf)
+                recorder.record_pose(pose_frame)
+                result = engine.analyze(pose_frame)
+                recorder.record_analysis(result)
+
+                # Rep announcement always plays first (before faults).
+                if result.rep_event is not None and alert_cfg.get(
+                    "rep_announce", True
+                ):
+                    rep_count = result.rep_event.rep_id
+                    rep_msg = f"第{rep_count}个深蹲"
+                    if not result.fault_events:
+                        rep_msg += "，动作标准"
+                    print(f"[rep] {rep_msg}")
+                    tts.speak(rep_msg)
+                    recorder.record_alert(
+                        AlertCommand(
+                            text=rep_msg,
+                            priority="info",
+                            cooldown_key=f"rep_{rep_count}",
+                        ),
+                        vf.event.timestamp_ms,
+                    )
+
+                for cmd in policy.filter_faults(result.fault_events):
+                    print(f"[alert] {cmd.text}")
+                    tts.speak(cmd.text)
+                    recorder.record_alert(cmd, vf.event.timestamp_ms)
+
+                if view is not None:
+                    overlay = view.render(vf.image_bgr, pose_frame, result)
+                    recorder.record_overlay(
+                        overlay,
+                        vf.event.fps_est or float(stream_cfg.get("expected_fps", 30)),
+                    )
+                    _ = view.show(overlay)
     finally:
         print("[shutdown] Closing resources...")
         source.close()

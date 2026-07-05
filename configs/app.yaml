@@ -12,17 +12,18 @@ stream:
   camera_id: side_phone_1
   camera_role: side
   expected_fps: 30
+  process_every_n: 2     # process 1 out of N frames (2 = 15fps effective)
   reconnect: true
   reconnect_interval_sec: 2.0
   buffer_size: 1
   rotate: 0 # 0, 90, 180, 270
   mirror: false
-  max_width: 1280
+  max_width: 720           # downscale for faster overlay + recording
 
 perception:
   backend: mediapipe
   delegate: cpu # cpu | gpu (experimental, Metal on Apple Silicon)
-  model_complexity: 0 # 0 lite (fast), 1 full, 2 heavy
+  model_complexity: 1 # 0 lite (fast), 1 full, 2 heavy
   min_detection_confidence: 0.55
   min_tracking_confidence: 0.55
   inference_fps: 20

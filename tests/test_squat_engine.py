@@ -221,9 +221,7 @@ class TestTorsoLeanFault:
             ts = 33 + i * 50
             engine.analyze(_bent_pose(1 + i, ts, knee_deg=140, torso_deg=50))
         # Complete rep to get accumulated faults
-        r = engine.analyze(
-            _bent_pose(12, 600, knee_deg=155, torso_deg=50)
-        )  # lockout
+        r = engine.analyze(_bent_pose(12, 600, knee_deg=155, torso_deg=50))  # lockout
         assert any(f.code == "torso_lean_too_much" for f in r.fault_events), (
             f"No torso fault in {[f.code for f in r.fault_events]}"
         )
@@ -252,9 +250,7 @@ class TestHipRiseFault:
         engine.analyze(_bent_pose(10, 300, knee_deg=120, torso_deg=42))
         engine.analyze(_bent_pose(11, 333, knee_deg=128, torso_deg=48))
         # Complete rep to get accumulated faults
-        r = engine.analyze(
-            _bent_pose(12, 400, knee_deg=155, torso_deg=48)
-        )  # lockout
+        r = engine.analyze(_bent_pose(12, 400, knee_deg=155, torso_deg=48))  # lockout
         has_fault = any(f.code == "hip_rise_too_early" for f in r.fault_events)
         assert has_fault, f"No hip_rise fault in {[f.code for f in r.fault_events]}"
 
