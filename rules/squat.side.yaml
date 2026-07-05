@@ -17,19 +17,19 @@ faults:
   depth_not_enough:
     phase: ascent
     severity: medium
-    message: "深蹲深度不够，还需再下 {gap_deg} 度！当前 {knee_angle}°，目标 {target}°"
+    message: "深蹲深度不够！当前 {knee_angle}°{gap_text}"
 
   torso_lean_too_much:
     phase: descent|bottom|ascent
     severity: medium
-    message: "身体前倾过多，超过 {excess_deg} 度！保持胸部稳定。"
+    message: "身体前倾 {excess_deg}°，保持胸部稳定！"
 
   hip_rise_too_early:
     phase: ascent
     severity: high
-    message: "上升时髋部先起，躯干角度增加 {torso_delta} 度！保持胸部和髋部同步上升。"
+    message: "髋部先起 {torso_delta}°，胸髋同步！"
 
   pose_low_confidence:
     phase: any
     severity: low
-    message: "人体关键点不稳定，请调整手机角度或光线。"
+    message: "关键点不稳定，调整手机角度或光线。"

@@ -147,6 +147,8 @@ class SquatSideEngine:
                 self.rep.bottom_ms = now_ms
                 self.rep.bottom_torso_angle = metrics.get("torso_angle")
                 self.rep.hip_y_at_bottom = metrics.get("hip_y")
+                _gap = max(0, self.rep.min_knee_angle - self.bottom_angle)
+                _gap_text = f"，还需下 {_gap:.1f}°" if _gap > 0 else ""
                 fault = self._rep_fault(
                     code="depth_not_enough",
                     phase="ascent",
@@ -155,11 +157,8 @@ class SquatSideEngine:
                     now_ms=now_ms,
                     confidence=0.75,
                     evidence={
-                        "gap_deg": round(
-                            max(0, self.rep.min_knee_angle - self.bottom_angle), 1
-                        ),
                         "knee_angle": round(self.rep.min_knee_angle, 1),
-                        "target": self.bottom_angle,
+                        "gap_text": _gap_text,
                     },
                 )
                 faults.append(fault)
@@ -168,6 +167,8 @@ class SquatSideEngine:
             if knee_angle > self.bottom_angle + self.ascent_hysteresis:
                 self.phase = "ascent"
                 if self.rep.max_depth_ratio < self.depth_min_ratio:
+                    _gap = max(0, self.rep.min_knee_angle - self.bottom_angle)
+                    _gap_text = f"，还需下 {_gap:.1f}°" if _gap > 0 else ""
                     faults.append(
                         self._rep_fault(
                             code="depth_not_enough",
@@ -177,12 +178,8 @@ class SquatSideEngine:
                             now_ms=now_ms,
                             confidence=0.8,
                             evidence={
-                                "gap_deg": round(
-                                    max(0, self.rep.min_knee_angle - self.bottom_angle),
-                                    1,
-                                ),
                                 "knee_angle": round(self.rep.min_knee_angle, 1),
-                                "target": self.bottom_angle,
+                                "gap_text": _gap_text,
                             },
                         )
                     )

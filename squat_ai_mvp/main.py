@@ -5,7 +5,7 @@ import signal
 import time
 
 from squat_ai_mvp.core.alert.policy import AlertPolicy
-from squat_ai_mvp.core.alert.tts import AsyncTTS, create_tts_provider
+from squat_ai_mvp.core.alert.tts import AlertCommand, AsyncTTS, create_tts_provider
 from squat_ai_mvp.core.biomechanics.squat_engine import SquatSideEngine
 from squat_ai_mvp.core.config import load_config, load_yaml
 from squat_ai_mvp.core.perception.mediapipe_pose import MediaPipePoseEstimator
@@ -150,16 +150,23 @@ def main(argv: list[str] | None = None) -> int:
             result = engine.analyze(pose_frame)
             recorder.record_analysis(result)
 
+            # Rep announcement always plays first (before faults).
+            if result.rep_event is not None and alert_cfg.get("rep_announce", True):
+                rep_count = result.rep_event.rep_id
+                rep_msg = f"第{rep_count}个深蹲"
+                if not result.fault_events:
+                    rep_msg += "，动作标准"
+                print(f"[rep] {rep_msg}")
+                tts.speak(rep_msg)
+                recorder.record_alert(
+                    AlertCommand(text=rep_msg, priority="info", cooldown_key=f"rep_{rep_count}"),
+                    vf.event.timestamp_ms,
+                )
+
             for cmd in policy.filter_faults(result.fault_events):
                 print(f"[alert] {cmd.text}")
                 tts.speak(cmd.text)
                 recorder.record_alert(cmd, vf.event.timestamp_ms)
-
-            if result.rep_event is not None and alert_cfg.get("rep_announce", True):
-                rep_count = result.rep_event.rep_id
-                print(f"[rep] rep #{rep_count} completed")
-                if tts_provider != "print":
-                    tts.speak(f"第{rep_count}个深蹲，动作标准")
 
             if view is not None:
                 overlay = view.render(vf.image_bgr, pose_frame, result)
