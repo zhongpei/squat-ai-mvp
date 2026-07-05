@@ -97,7 +97,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     tts_provider = args.tts or str(alert_cfg.get("tts_provider", "pyttsx3"))
     # Pick voice: pyttsx3 uses voice_id, say uses say_voice
-    voice: str | None = alert_cfg.get("voice_id") if tts_provider == "pyttsx3" else alert_cfg.get("say_voice")
+    voice: str | None = (
+        alert_cfg.get("voice_id")
+        if tts_provider == "pyttsx3"
+        else alert_cfg.get("say_voice")
+    )
     tts = AsyncTTS(
         create_tts_provider(
             tts_provider,

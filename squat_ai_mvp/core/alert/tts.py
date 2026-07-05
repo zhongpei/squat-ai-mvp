@@ -33,7 +33,9 @@ class Pyttsx3Provider(TTSProvider):
     Supports Chinese voices on macOS via voice_id.
     """
 
-    def __init__(self, rate: int = 185, volume: float = 1.0, voice_id: Optional[str] = None) -> None:
+    def __init__(
+        self, rate: int = 222, volume: float = 1.0, voice_id: Optional[str] = None
+    ) -> None:
         import pyttsx3
 
         self.engine = pyttsx3.init()
@@ -74,7 +76,7 @@ class SayProvider(TTSProvider):
     Runs ``say -v <voice> <text>`` in a subprocess.
     """
 
-    def __init__(self, voice: str = "Tingting", rate: int = 185) -> None:
+    def __init__(self, voice: str = "Tingting", rate: int = 222) -> None:
         self.voice = voice
         self.rate = rate
 
@@ -119,7 +121,9 @@ class AsyncTTS:
         self.provider.close()
 
 
-def create_tts_provider(name: str, rate: int = 185, volume: float = 1.0, voice: Optional[str] = None) -> TTSProvider:
+def create_tts_provider(
+    name: str, rate: int = 222, volume: float = 1.0, voice: Optional[str] = None
+) -> TTSProvider:
     """Factory: return a TTS provider by name."""
     if name == "print":
         return PrintTTSProvider()
