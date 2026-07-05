@@ -155,6 +155,12 @@ def main(argv: list[str] | None = None) -> int:
                 tts.speak(cmd.text)
                 recorder.record_alert(cmd, vf.event.timestamp_ms)
 
+            if result.rep_event is not None and alert_cfg.get("rep_announce", True):
+                rep_count = result.rep_event.rep_id
+                print(f"[rep] rep #{rep_count} completed")
+                if tts_provider != "print":
+                    tts.speak(f"第{rep_count}个深蹲，动作标准")
+
             if view is not None:
                 overlay = view.render(vf.image_bgr, pose_frame, result)
                 recorder.record_overlay(

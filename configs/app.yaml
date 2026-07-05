@@ -35,7 +35,8 @@ biomechanics:
 
 alert:
   enabled: true
-  tts_provider: say # say | pyttsx3 | print
+  rep_announce: true   # announce completed reps
+  tts_provider: say     # say | pyttsx3 | print
   # Voice ID for pyttsx3 (macOS voices like "Tingting", "Tingting Compact")
   # Leave empty for auto-select Chinese voice.
   voice_id: ~
