@@ -8,7 +8,7 @@ PYTEST ?= $(UV) run pytest
 # ── Install ──────────────────────────────────────────────────────────
 install: .venv/bin/activate
 .venv/bin/activate: pyproject.toml
-	$(UV) venv --python $(PYTHON)
+	test -d .venv || $(UV) venv --python $(PYTHON)
 	$(UV) sync --dev
 	touch "$@"
 
@@ -23,16 +23,17 @@ test: .venv/bin/activate
 test-quiet: .venv/bin/activate
 	$(PYTEST) -q --tb=no
 
-test-watch: .venv/bin/activate
-	$(UV) run ptw -- -v --tb=short
-
 test-coverage: .venv/bin/activate
 	$(UV) pip install pytest-cov
 	$(PYTEST) --cov=squat_ai_mvp --cov-report=term --cov-report=html
 
 # ── Dev server (re-run tests on file change) ─────────────────────────
 dev: install
-	$(UV) run ptw --now -- -v --tb=short
+	$(UV) run ptw --config pytest.ini tests -c -- -v --tb=short
+
+.PHONY: test-watch
+test-watch: .venv/bin/activate
+	$(UV) run ptw --config pytest.ini tests -v --tb=short
 
 # ── Lint & Format ────────────────────────────────────────────────────
 lint: .venv/bin/activate
