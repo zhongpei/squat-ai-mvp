@@ -163,7 +163,7 @@ class MediaPipePoseEstimator:
         for name, enum_name in LANDMARK_MAP.items():
             idx = getattr(_PoseLandmark, enum_name)
             lm = landmarks[idx]
-            score = float(lm.score)
+            score = float(lm.visibility)
             # Coordinates are normalized [0..1]; convert to pixels.
             x = float(lm.x * w)
             y = float(lm.y * h)
