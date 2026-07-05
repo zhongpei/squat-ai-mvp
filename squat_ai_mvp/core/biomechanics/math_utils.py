@@ -37,7 +37,7 @@ def torso_angle_from_vertical(shoulder_mid: Keypoint, hip_mid: Keypoint) -> Opti
     if not (valid(shoulder_mid) and valid(hip_mid)):
         return None
     dx = shoulder_mid.x - hip_mid.x
-    dy = shoulder_mid.y - hip_mid.y
+    dy = hip_mid.y - shoulder_mid.y
     if abs(dy) < 1e-6:
         return 90.0
     return abs(math.degrees(math.atan2(dx, dy)))
