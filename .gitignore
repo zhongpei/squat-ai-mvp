@@ -28,3 +28,4 @@ sessions/
 # Ruff
 .ruff_cache/
 *.zip
+models/

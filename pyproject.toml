@@ -4,19 +4,15 @@ version = "0.1.0"
 description = "WiFi phone camera squat monitoring MVP with pose estimation, biomechanics rules, TTS alerts, and session recording."
 requires-python = ">=3.10,<3.12"
 dependencies = [
-    "opencv-python>=4.9.0",
-    "mediapipe>=0.10.9",
-    "numpy>=1.24",
-    "PyYAML>=6.0",
-    "pyttsx3>=2.90",
+  "opencv-python>=4.9.0",
+  "mediapipe>=0.10.9",
+  "numpy>=1.24",
+  "PyYAML>=6.0",
+  "pyttsx3>=2.90",
 ]
 
 [project.scripts]
 squat-ai-mvp = "squat_ai_mvp.main:main"
 
 [dependency-groups]
-dev = [
-    "pytest>=8.0",
-    "pytest-watch>=4.0",
-]
-
+dev = ["pytest>=8.0", "pytest-watch>=4.0"]
