@@ -31,6 +31,7 @@ class RepState:
     torso_fault_active_since: Optional[int] = None
     low_conf_fault_active_since: Optional[int] = None
     emitted_faults: set[str] = field(default_factory=set)
+    faults: list[FaultEvent] = field(default_factory=list)
 
 
 class SquatSideEngine:
@@ -189,26 +190,31 @@ class SquatSideEngine:
             if hip_rise_fault:
                 faults.append(hip_rise_fault)
 
-            if knee_angle >= self.up_angle:
-                duration = now_ms - self.rep.start_ms
-                # Only count rep that actually reached bottom phase.
-                if self.rep.bottom_ms > 0 and duration >= self.min_rep_duration_ms:
-                    self.rep_id += 1
-                    rep_event = RepEvent(
-                        type="rep",
-                        exercise=self.exercise,
-                        rep_id=self.rep_id,
-                        start_ms=self.rep.start_ms,
-                        end_ms=now_ms,
-                        duration_ms=duration,
-                        metrics={
-                            "min_knee_angle": round(self.rep.min_knee_angle, 2),
-                            "max_torso_angle": round(self.rep.max_torso_angle, 2),
-                            "max_depth_ratio": round(self.rep.max_depth_ratio, 4),
-                        },
-                    )
-                self.phase = "lockout"
-                self.rep = RepState()
+        # Rep completion: separate from phase elif-chain so it runs even when
+        # descent→ascent and ascent→lockout happen on the same frame.
+        if self.phase == "ascent" and knee_angle >= self.up_angle:
+            duration = now_ms - self.rep.start_ms
+            # Move accumulated rep faults into this frame's fault list.
+            for f in self.rep.faults:
+                faults.append(f)
+            self.rep.faults.clear()
+            if duration >= self.min_rep_duration_ms:
+                self.rep_id += 1
+                rep_event = RepEvent(
+                    type="rep",
+                    exercise=self.exercise,
+                    rep_id=self.rep_id,
+                    start_ms=self.rep.start_ms,
+                    end_ms=now_ms,
+                    duration_ms=duration,
+                    metrics={
+                        "min_knee_angle": round(self.rep.min_knee_angle, 2),
+                        "max_torso_angle": round(self.rep.max_torso_angle, 2),
+                        "max_depth_ratio": round(self.rep.max_depth_ratio, 4),
+                    },
+                )
+            self.phase = "lockout"
+            self.rep = RepState()
 
         # Continuous torso lean fault.
         torso_fault = self._check_torso_lean(metrics, now_ms)
@@ -221,12 +227,22 @@ class SquatSideEngine:
 
         metrics["phase"] = self.phase
         metrics["rep_id"] = self.rep_id
+
+        # Fault accumulation:
+        # - During rep → buffer into RepState.faults, deferred to rep end.
+        # - Outside rep (or just exited rep) → return immediately.
+        if self.phase in ("descent", "bottom", "ascent"):
+            self.rep.faults.extend(faults)
+            result_faults = []
+        else:
+            result_faults = faults
+
         return AnalysisResult(
             phase=self.phase,
             rep_id=self.rep_id,
             metrics=metrics,
             rep_event=rep_event,
-            fault_events=faults,
+            fault_events=result_faults,
         )
 
     def _extract_metrics(self, pose: PoseFrame) -> dict[str, Any]:

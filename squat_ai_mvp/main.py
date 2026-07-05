@@ -159,7 +159,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[rep] {rep_msg}")
                 tts.speak(rep_msg)
                 recorder.record_alert(
-                    AlertCommand(text=rep_msg, priority="info", cooldown_key=f"rep_{rep_count}"),
+                    AlertCommand(
+                        text=rep_msg, priority="info", cooldown_key=f"rep_{rep_count}"
+                    ),
                     vf.event.timestamp_ms,
                 )
 
