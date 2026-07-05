@@ -188,23 +188,6 @@ class SquatSideEngine:
         elif self.phase == "bottom":
             if knee_angle > self.bottom_angle + self.ascent_hysteresis:
                 self.phase = "ascent"
-                if self.rep.max_depth_ratio < self.depth_min_ratio:
-                    _gap = max(0, self.rep.min_knee_angle - self.bottom_angle)
-                    _gap_text = f"，还需下 {_gap:.1f}°" if _gap > 0 else ""
-                    self.rep.faults.append(
-                        self._rep_fault(
-                            code="depth_not_enough",
-                            phase="ascent",
-                            severity=self._fault_severity("depth_not_enough"),
-                            message=self._fault_message("depth_not_enough"),
-                            now_ms=now_ms,
-                            confidence=0.8,
-                            evidence={
-                                "knee_angle": round(self.rep.min_knee_angle, 1),
-                                "gap_text": _gap_text,
-                            },
-                        )
-                    )
 
         elif self.phase == "ascent":
             hip_rise_fault = self._check_hip_rise(metrics, now_ms)
