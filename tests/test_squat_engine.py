@@ -104,13 +104,13 @@ def _low_conf_pose(pose: PoseFrame, score: float = 0.2) -> PoseFrame:
 
 class TestEngineLifecycle:
     def test_constructs(self):
-        engine = SquatSideEngine(_RULES, descent_confirm_ms=0)
+        engine = SquatSideEngine(_RULES, descent_confirm_ms=0, min_head_score=0.0)
         result = engine.analyze(None)
         assert result.phase == "setup"
         assert result.metrics["pose_ok"] == False
 
     def test_standing_stays_in_lockout(self):
-        engine = SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0)
+        engine = SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0, min_head_score=0.0)
         for _i in range(5):
             result = engine.analyze(_standing_pose(0, 0))
             assert result.phase == "setup" or result.phase == "lockout"
@@ -118,7 +118,7 @@ class TestEngineLifecycle:
 
 class TestPhaseTransitions:
     def _make_engine(self) -> SquatSideEngine:
-        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0)
+        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0, min_head_score=0.0)
 
     def test_descent_detected(self):
         engine = self._make_engine()
@@ -185,15 +185,15 @@ class TestPhaseTransitions:
 
 class TestDepthFault:
     def _make_engine(self) -> SquatSideEngine:
-        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0)
+        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0, min_head_score=0.0)
 
     def test_reversing_before_bottom_triggers_depth_fault(self):
         engine = self._make_engine()
         engine.analyze(_standing_pose(0, 0))
-        engine.analyze(_bent_pose(1, 33, knee_deg=145))  # descent
-        engine.analyze(_bent_pose(2, 66, knee_deg=140))  # deeper
-        engine.analyze(_bent_pose(3, 99, knee_deg=150))  # reversal → ascent
-        r = engine.analyze(_bent_pose(4, 132, knee_deg=160))  # lockout
+        engine.analyze(_bent_pose(1, 100, knee_deg=145))  # descent
+        engine.analyze(_bent_pose(2, 400, knee_deg=140))  # deeper
+        engine.analyze(_bent_pose(3, 500, knee_deg=150))  # reversal → ascent
+        r = engine.analyze(_bent_pose(4, 900, knee_deg=160))  # lockout (dur=800)
         assert any(f.code == "depth_not_enough" for f in r.fault_events), (
             f"No depth fault in {[f.code for f in r.fault_events]}"
         )
@@ -211,7 +211,7 @@ class TestDepthFault:
 
 class TestTorsoLeanFault:
     def _make_engine(self) -> SquatSideEngine:
-        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0)
+        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0, min_head_score=0.0)
 
     def test_excessive_lean_detected(self):
         engine = self._make_engine()
@@ -221,7 +221,7 @@ class TestTorsoLeanFault:
             ts = 33 + i * 50
             engine.analyze(_bent_pose(1 + i, ts, knee_deg=140, torso_deg=50))
         # Complete rep to get accumulated faults
-        r = engine.analyze(_bent_pose(12, 600, knee_deg=155, torso_deg=50))  # lockout
+        r = engine.analyze(_bent_pose(12, 800, knee_deg=155, torso_deg=50))  # lockout
         assert any(f.code == "torso_lean_too_much" for f in r.fault_events), (
             f"No torso fault in {[f.code for f in r.fault_events]}"
         )
@@ -237,7 +237,7 @@ class TestTorsoLeanFault:
 
 class TestHipRiseFault:
     def _make_engine(self) -> SquatSideEngine:
-        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0)
+        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0, min_head_score=0.0)
 
     def test_hip_rise_detected(self):
         engine = self._make_engine()
@@ -250,14 +250,14 @@ class TestHipRiseFault:
         engine.analyze(_bent_pose(10, 300, knee_deg=120, torso_deg=42))
         engine.analyze(_bent_pose(11, 333, knee_deg=128, torso_deg=48))
         # Complete rep to get accumulated faults
-        r = engine.analyze(_bent_pose(12, 400, knee_deg=155, torso_deg=48))  # lockout
+        r = engine.analyze(_bent_pose(12, 800, knee_deg=155, torso_deg=48))  # lockout
         has_fault = any(f.code == "hip_rise_too_early" for f in r.fault_events)
         assert has_fault, f"No hip_rise fault in {[f.code for f in r.fault_events]}"
 
 
 class TestGoodSquat:
     def _make_engine(self) -> SquatSideEngine:
-        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0)
+        return SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0, min_head_score=0.0)
 
     def test_completes_full_cycle(self):
         """Good squat reaches bottom and completes a rep."""
@@ -277,7 +277,7 @@ class TestGoodSquat:
 
 class TestLowConfidence:
     def test_low_conf_pose(self):
-        engine = SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0)
+        engine = SquatSideEngine(_RULES, smoothing_window=1, descent_confirm_ms=0, min_head_score=0.0)
         pf = _standing_pose(0, 0)
         _low_conf_pose(pf, score=0.2)
         result = engine.analyze(pf)

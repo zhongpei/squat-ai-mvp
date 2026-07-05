@@ -47,8 +47,10 @@ class SquatSideEngine:
         smoothing_window: int = 5,
         min_rep_duration_ms: int = 700,
         descent_confirm_ms: int = 300,
+        min_head_score: float = 0.5,
     ) -> None:
         self.rules = rules
+        self.min_head_score = min_head_score
         self.exercise = str(rules.get("exercise", "squat"))
         phase_cfg = rules.get("phases", {})
         metric_cfg = rules.get("metrics", {})
@@ -84,6 +86,15 @@ class SquatSideEngine:
         metrics = self._extract_metrics(pose)
         now_ms = pose.frame.timestamp_ms
         faults: list[FaultEvent] = []
+
+        # Head must be visible. If person leaves frame / turns away, freeze state.
+        nose = pose.keypoints.get("nose")
+        if nose is None or nose.score < self.min_head_score:
+            return AnalysisResult(
+                phase=self.phase,
+                rep_id=self.rep_id,
+                metrics={**metrics, "pose_ok": False, "head_visible": False},
+            )
 
         if metrics["pose_score"] < 0.35:
             low = self._duration_fault(
@@ -150,19 +161,20 @@ class SquatSideEngine:
                 self.rep.hip_y_at_bottom = metrics.get("hip_y")
                 _gap = max(0, self.rep.min_knee_angle - self.bottom_angle)
                 _gap_text = f"，还需下 {_gap:.1f}°" if _gap > 0 else ""
-                fault = self._rep_fault(
-                    code="depth_not_enough",
-                    phase="ascent",
-                    severity=self._fault_severity("depth_not_enough"),
-                    message=self._fault_message("depth_not_enough"),
-                    now_ms=now_ms,
-                    confidence=0.75,
-                    evidence={
-                        "knee_angle": round(self.rep.min_knee_angle, 1),
-                        "gap_text": _gap_text,
-                    },
+                self.rep.faults.append(
+                    self._rep_fault(
+                        code="depth_not_enough",
+                        phase="ascent",
+                        severity=self._fault_severity("depth_not_enough"),
+                        message=self._fault_message("depth_not_enough"),
+                        now_ms=now_ms,
+                        confidence=0.75,
+                        evidence={
+                            "knee_angle": round(self.rep.min_knee_angle, 1),
+                            "gap_text": _gap_text,
+                        },
+                    )
                 )
-                faults.append(fault)
 
         elif self.phase == "bottom":
             if knee_angle > self.bottom_angle + self.ascent_hysteresis:
@@ -170,7 +182,7 @@ class SquatSideEngine:
                 if self.rep.max_depth_ratio < self.depth_min_ratio:
                     _gap = max(0, self.rep.min_knee_angle - self.bottom_angle)
                     _gap_text = f"，还需下 {_gap:.1f}°" if _gap > 0 else ""
-                    faults.append(
+                    self.rep.faults.append(
                         self._rep_fault(
                             code="depth_not_enough",
                             phase="ascent",
@@ -194,11 +206,11 @@ class SquatSideEngine:
         # descent→ascent and ascent→lockout happen on the same frame.
         if self.phase == "ascent" and knee_angle >= self.up_angle:
             duration = now_ms - self.rep.start_ms
-            # Move accumulated rep faults into this frame's fault list.
-            for f in self.rep.faults:
-                faults.append(f)
-            self.rep.faults.clear()
             if duration >= self.min_rep_duration_ms:
+                # Real rep: move accumulated faults to this frame.
+                for f in self.rep.faults:
+                    faults.append(f)
+                self.rep.faults.clear()
                 self.rep_id += 1
                 rep_event = RepEvent(
                     type="rep",
@@ -213,6 +225,9 @@ class SquatSideEngine:
                         "max_depth_ratio": round(self.rep.max_depth_ratio, 4),
                     },
                 )
+            else:
+                # Too short (<700ms): discard, not a real rep.
+                self.rep.faults.clear()
             self.phase = "lockout"
             self.rep = RepState()
 

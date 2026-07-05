@@ -89,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         rules=rules,
         smoothing_window=int(cfg.biomechanics.get("smoothing_window", 5)),
         min_rep_duration_ms=int(cfg.biomechanics.get("min_rep_duration_ms", 700)),
+        min_head_score=float(cfg.biomechanics.get("min_head_score", 0.5)),
     )
 
     alert_cfg = cfg.alert
@@ -164,9 +165,7 @@ def main(argv: list[str] | None = None) -> int:
                 recorder.record_analysis(result)
 
                 # Rep announcement always plays first (before faults).
-                if result.rep_event is not None and alert_cfg.get(
-                    "rep_announce", True
-                ):
+                if result.rep_event is not None and alert_cfg.get("rep_announce", True):
                     rep_count = result.rep_event.rep_id
                     rep_msg = f"第{rep_count}个深蹲"
                     if not result.fault_events:

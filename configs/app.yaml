@@ -12,13 +12,13 @@ stream:
   camera_id: side_phone_1
   camera_role: side
   expected_fps: 30
-  process_every_n: 2     # process 1 out of N frames (2 = 15fps effective)
+  process_every_n: 2 # process 1 out of N frames (2 = 15fps effective)
   reconnect: true
   reconnect_interval_sec: 2.0
   buffer_size: 1
   rotate: 0 # 0, 90, 180, 270
   mirror: false
-  max_width: 720           # downscale for faster overlay + recording
+  max_width: 720 # downscale for faster overlay + recording
 
 perception:
   backend: mediapipe
@@ -33,6 +33,7 @@ biomechanics:
   rules_file: rules/squat.side.yaml
   smoothing_window: 5
   min_rep_duration_ms: 700
+  min_head_score: 0.5    # nose confidence; below this → freeze state
 
 alert:
   enabled: true
