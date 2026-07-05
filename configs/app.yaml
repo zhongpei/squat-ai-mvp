@@ -31,7 +31,7 @@ perception:
 
 biomechanics:
   rules_file: rules/squat.side.yaml
-  smoothing_window: 5
+  smoothing_window: 1     # 不平滑，噪声靠 descent_confirm_ms(300ms) 过滤
   min_rep_duration_ms: 700
   min_head_score: 0.5 # nose confidence; below this → freeze state
 
