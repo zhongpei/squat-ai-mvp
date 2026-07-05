@@ -12,7 +12,7 @@ stream:
   camera_id: side_phone_1
   camera_role: side
   expected_fps: 30
-  process_every_n: 2 # process 1 out of N frames (2 = 15fps effective)
+  process_every_n: 2 # skip every other frame (15fps effective)
   reconnect: true
   reconnect_interval_sec: 2.0
   buffer_size: 1
@@ -23,7 +23,7 @@ stream:
 perception:
   backend: mediapipe
   delegate: cpu # cpu | gpu (experimental, Metal on Apple Silicon)
-  model_complexity: 1 # 0 lite (fast), 1 full, 2 heavy
+  model_complexity: 0 # 0 lite, 1 full, 2 heavy
   min_detection_confidence: 0.55
   min_tracking_confidence: 0.55
   inference_fps: 20
@@ -31,7 +31,7 @@ perception:
 
 biomechanics:
   rules_file: rules/squat.side.yaml
-  smoothing_window: 1     # 不平滑，噪声靠 descent_confirm_ms(300ms) 过滤
+  smoothing_window: 1 # 不平滑，噪声靠 descent_confirm_ms(300ms) 过滤
   min_rep_duration_ms: 700
   min_head_score: 0.5 # nose confidence; below this → freeze state
 

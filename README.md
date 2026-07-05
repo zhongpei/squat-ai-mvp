@@ -1,235 +1,161 @@
 # Squat AI MVP
 
-WiFi phone-camera MVP for real-time squat monitoring.
+WiFi phone-camera real-time squat monitoring.
 
-This project uses an existing phone app as a WiFi camera, receives the stream through MediaMTX, pulls frames with Python, runs pose estimation, evaluates side-view squat mechanics, plays TTS alerts, and saves session data.
+Phone pushes RTMP to a local MediaMTX gateway; Python pulls RTSP, runs MediaPipe pose estimation, evaluates side-view squat biomechanics, plays TTS voice alerts, and saves session data.
 
 ## Architecture
 
 ```text
-Phone App (Larix Broadcaster)
+Phone App (IRL Pro)
   -> RTMP push over WiFi
   -> MediaMTX local media gateway
   -> RTSP pull by Python
-  -> MediaPipe Pose adapter
-  -> SquatSideEngine biomechanics rules
-  -> AlertPolicy + TTS
+  -> MediaPipe Pose (PoseLandmarker, Lite model)
+  -> SquatSideEngine phase machine + rules
+  -> AlertPolicy + TTS (macOS say / pyttsx3)
   -> OpenCV overlay UI + JSONL session recorder
 ```
 
-The current perception backend is MediaPipe Pose because it is the fastest path for local testing and gives 33 landmarks including feet. The internal schema is backend-neutral, so RTMPose/RTMW/MMPose can replace it without changing the biomechanics engine.
+## Requirements
 
-## Tested target environment
-
-- Python 3.10 or 3.11 recommended
 - macOS / Linux / Windows
-- Phone and computer on the same WiFi
-- Docker optional, only for MediaMTX
+- Python 3.10 or 3.11
+- Docker Desktop (for MediaMTX)
+- Phone + computer on same WiFi
+- IRL Pro app (iOS)
 
-## 1. Install (uv + Make)
+## Quick start
+
+```bash
+make install        # uv venv + sync deps
+make docker-up      # start MediaMTX
+get IP              # ipconfig getifaddr en0
+# configure phone (see below)
+make run            # start analysis
+```
+
+## 1. Install
 
 ```bash
 make install
-# or manually:
-uv venv
-uv sync --dev
 ```
 
-If `pyttsx3` has audio issues on your machine, run with `--tts print` first.
+If TTS has audio issues, pass `--tts print`.
 
-## 2. Run tests
+## 2. Start MediaMTX
 
 ```bash
-make test
+make docker-up
+docker compose logs  # verify RTSP/RTMP listeners
 ```
 
-## 3. Start MediaMTX
+## 3. Configure IRL Pro (phone)
 
-Using Docker Compose:
+### Connection
+
+| Field | Value |
+|---|---|
+| Protocol | RTMP |
+| URL | `rtmp://<computer_lan_ip>:1935/live` |
+| Stream Key | `side` |
+
+### Video settings
+
+| Setting | Value |
+|---|---|
+| Resolution | 1280×720 |
+| FPS | 30 |
+| Codec | H.264 |
+| Bitrate | 2500–4000 kbps |
+| Keyframe interval | 1s (30 frames) |
+| Audio | off |
+| Orientation | landscape (fixed) |
+
+Place phone in side view, full body visible, then tap Start/Record.
+
+> IRL Pro combines URL + Stream Key into `rtmp://<ip>:1935/live/side`.
+
+## 4. Run
 
 ```bash
-docker compose up -d
+make run                     # with UI + TTS
+make run ARGS='--tts print --no-ui'   # debug / no audio
+make run ARGS='--stream-url 0 --tts print'  # local webcam
 ```
 
-Check ports:
+App reads `rtsp://127.0.0.1:8554/live/side`. Press `q` in the video window to stop.
 
-```bash
-curl http://127.0.0.1:9997/v3/config/global/get
-```
+## Detection scope
 
-Stop it:
+**Side-view squat only.**
 
-```bash
-docker compose down
-```
+| Phase | Description |
+|---|---|
+| setup / lockout | Standing upright |
+| descent | Knees bending |
+| bottom | Knee at or below target angle |
+| ascent | Returning to standing |
 
-## 3. Find your computer LAN IP
+| Alert | Trigger |
+|---|---|
+| `depth_not_enough` | Knee didn't reach bottom, or hip above knee at bottom |
+| `torso_lean_too_much` | Torso leans forward beyond threshold |
+| `hip_rise_too_early` | Hips rise faster than chest during ascent |
 
-macOS:
-
-```bash
-ipconfig getifaddr en0
-```
-
-Linux:
-
-```bash
-hostname -I
-```
-
-Windows PowerShell:
-
-```powershell
-ipconfig
-```
-
-Assume the LAN IP is `192.168.1.20` below.
-
-## 4. Configure phone app
-
-Recommended app: Larix Broadcaster on iPhone or Android.
-
-Connection URL:
-
-```text
-rtmp://192.168.1.20:1935/live/side
-```
-
-Recommended video settings:
-
-```text
-Resolution: 1280x720
-FPS: 30
-Codec: H.264
-Bitrate: 2500-4000 kbps
-Keyframe interval: 1s
-Audio: off
-Orientation: landscape fixed
-```
-
-Place the phone at side view for squats.
-
-## 5. Run the MVP
-
-```bash
-make run
-# or with custom args:
-make run ARGS='--tts print --no-ui'
-# or directly:
-uv run python run.py --config configs/app.yaml
-```
-
-The app reads:
-
-```text
-rtsp://127.0.0.1:8554/live/side
-```
-
-Press `q` in the OpenCV video window to stop.
-
-Run without UI:
-
-```bash
-python run.py --config configs/app.yaml --no-ui --tts print
-```
-
-Override stream URL:
-
-```bash
-python run.py --stream-url rtsp://127.0.0.1:8554/live/side
-```
-
-Debug with a local webcam instead of phone:
-
-```bash
-python run.py --stream-url 0 --tts print
-```
-
-Debug with a video file:
-
-```bash
-python run.py --stream-url /path/to/squat.mp4 --tts print
-```
+All thresholds in `rules/squat.side.yaml`.
 
 ## Output data
 
-Each run writes:
-
 ```text
 sessions/<session_id>_squat/
-  session.json
-  frames.jsonl
-  pose.jsonl
-  analysis.jsonl
-  reps.jsonl
-  faults.jsonl
-  alerts.jsonl
-  overlay_side.mp4
-  report.md
+  session.json          # metadata
+  frames.jsonl          # frame events
+  pose.jsonl            # pose landmarks
+  analysis.jsonl        # per-frame metrics + phase
+  reps.jsonl            # completed rep summaries
+  faults.jsonl          # detected faults
+  alerts.jsonl          # TTS alerts + rep announcements
+  overlay_side.mp4      # overlay video (if enabled)
+  report.md             # session summary
 ```
-
-Keep these files. They are the basis for rule tuning, model upgrades, and later Agent analysis.
-
-## First-version detection scope
-
-Current MVP supports side-view squat only.
-
-Implemented phases:
-
-```text
-setup -> descent -> bottom -> ascent -> lockout
-```
-
-Implemented alerts:
-
-- `depth_not_enough`
-- `torso_lean_too_much`
-- `hip_rise_too_early`
-
-The rule thresholds live in:
-
-```text
-rules/squat.side.yaml
-```
-
-## Important notes
-
-1. This is not medical advice and is not a substitute for a qualified coach.
-2. Side-view only cannot reliably detect knee valgus. Add a front camera for that.
-3. Hardlift/deadlift analysis should add barbell detection; the `objects` field is reserved for that.
-4. WiFi quality matters. Start with 720p/30fps and do not use 1080p until the full pipeline is stable.
-5. If pose points jump, improve lighting, increase phone distance, and keep the full body visible.
 
 ## Project layout
 
 ```text
+configs/app.yaml          # main config
+rules/squat.side.yaml     # squat phase + fault rules
+deploy/mediamtx.yml       # MediaMTX config
+docker-compose.yml         # MediaMTX container
+run.py                     # entry point
 squat_ai_mvp/
+  main.py                  # pipeline loop
   core/
-    stream/          video source adapters
-    perception/      pose backend adapters
-    biomechanics/    metrics, phases, rules
-    alert/           alert policy and TTS
-    session/         JSONL/video/report recording
-    ui/              OpenCV overlay UI
-configs/app.yaml
-rules/squat.side.yaml
-deploy/mediamtx.yml
-docker-compose.yml
-run.py
-Makefile             uv + test + docker targets
+    stream/source.py       # OpenCV video source
+    perception/mediapipe_pose.py  # PoseLandmarker adapter
+    biomechanics/          # engine, schemas, math
+    alert/                 # policy + TTS providers
+    session/recorder.py    # JSONL + video recording
+    ui/opencv_view.py      # OpenCV overlay
+Makefile                   # uv + test + docker targets
 ```
 
 ## Make targets
 
 | Command | Action |
-|---------|--------|
-| `make install` | Create venv + install all deps |
-| `make test` | Run tests (verbose) |
-| `make test-quiet` | Run tests (quiet) |
-| `make dev` | Watch mode: re-run tests on file change |
-| `make lint` | Ruff linter |
-| `make fmt` | Ruff formatter |
-| `make run` | Run the app |
-| `make docker-up` | Start MediaMTX gateway |
+|---|---|
+| `make install` | Create venv + install deps |
+| `make test` | Run tests |
+| `make dev` | Watch mode (re-run on file change) |
+| `make run` | Start analysis |
+| `make docker-up` | Start MediaMTX |
 | `make docker-down` | Stop MediaMTX |
 | `make clean` | Remove venv + caches |
+
+## Notes
+
+1. Not medical advice. Not a substitute for a qualified coach.
+2. Side-view only cannot detect knee valgus. Add front camera for that.
+3. Start with 720p/30fps. Do not use 1080p until pipeline is stable.
+4. If pose landmarks jump, improve lighting and keep full body visible.
+5. H.264 decode errors (`decode_slice_header`) are harmless — OpenCV recovers on next I-frame.
