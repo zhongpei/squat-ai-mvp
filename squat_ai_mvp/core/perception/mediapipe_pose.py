@@ -75,6 +75,10 @@ LANDMARK_MAP: dict[str, str] = {
     "right_heel": "RIGHT_HEEL",
     "left_foot_index": "LEFT_FOOT_INDEX",
     "right_foot_index": "RIGHT_FOOT_INDEX",
+    "left_eye": "LEFT_EYE",
+    "right_eye": "RIGHT_EYE",
+    "left_ear": "LEFT_EAR",
+    "right_ear": "RIGHT_EAR",
 }
 
 POSE_CONNECTIONS = [

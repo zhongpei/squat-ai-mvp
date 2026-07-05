@@ -87,9 +87,18 @@ class SquatSideEngine:
         now_ms = pose.frame.timestamp_ms
         faults: list[FaultEvent] = []
 
-        # Head must be visible. If person leaves frame / turns away, freeze state.
-        nose = pose.keypoints.get("nose")
-        if nose is None or nose.score < self.min_head_score:
+        # At least one head keypoint must be visible. Freeze state if out of frame.
+        _head_visible = any(
+            kp is not None and kp.score >= self.min_head_score
+            for kp in (
+                pose.keypoints.get("nose"),
+                pose.keypoints.get("left_eye"),
+                pose.keypoints.get("right_eye"),
+                pose.keypoints.get("left_ear"),
+                pose.keypoints.get("right_ear"),
+            )
+        )
+        if not _head_visible:
             return AnalysisResult(
                 phase=self.phase,
                 rep_id=self.rep_id,
