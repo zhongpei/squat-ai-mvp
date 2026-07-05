@@ -56,14 +56,12 @@ class OpenCVView:
         ]
         y = 28
         for line in lines:
-            cv2.putText(frame, line, (16, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 3)
-            cv2.putText(frame, line, (16, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 20, 20), 1)
+            cv2.putText(frame, line, (16, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
             y += 26
         if result.fault_events:
             fault = result.fault_events[-1]
             text = f"FAULT: {fault.code} ({fault.severity})"
-            cv2.putText(frame, text, (16, y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 3)
-            cv2.putText(frame, text, (16, y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            cv2.putText(frame, text, (16, y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
 
 
 def fmt(v, ndigits: int = 1) -> str:
