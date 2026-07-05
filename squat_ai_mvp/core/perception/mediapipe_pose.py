@@ -132,11 +132,19 @@ class MediaPipePoseEstimator:
 
         model_path = _ensure_model(model_complexity)
         if delegate == "gpu":
-            print("[perception] WARNING: GPU delegate may crash on macOS Python (Metal format bug).")
+            print(
+                "[perception] WARNING: GPU delegate may crash on macOS Python (Metal format bug)."
+            )
             print("[perception] Set delegate=cpu in config if crashes occur.")
-        delegate_enum = _BaseOptions.Delegate.GPU if delegate == "gpu" else _BaseOptions.Delegate.CPU
+        delegate_enum = (
+            _BaseOptions.Delegate.GPU
+            if delegate == "gpu"
+            else _BaseOptions.Delegate.CPU
+        )
         options = _PoseLandmarkerOptions(
-            base_options=_BaseOptions(model_asset_path=str(model_path), delegate=delegate_enum),
+            base_options=_BaseOptions(
+                model_asset_path=str(model_path), delegate=delegate_enum
+            ),
             running_mode=_RunningMode.IMAGE,
             min_pose_detection_confidence=min_detection_confidence,
             min_pose_presence_confidence=min_detection_confidence,

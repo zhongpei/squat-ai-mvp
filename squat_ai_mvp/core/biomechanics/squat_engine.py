@@ -194,7 +194,8 @@ class SquatSideEngine:
 
             if knee_angle >= self.up_angle:
                 duration = now_ms - self.rep.start_ms
-                if duration >= self.min_rep_duration_ms:
+                # Only count rep that actually reached bottom phase.
+                if self.rep.bottom_ms > 0 and duration >= self.min_rep_duration_ms:
                     self.rep_id += 1
                     rep_event = RepEvent(
                         type="rep",

@@ -21,8 +21,8 @@ stream:
 
 perception:
   backend: mediapipe
-  delegate: cpu           # cpu | gpu (experimental, Metal on Apple Silicon)
-  model_complexity: 1       # 0 lite, 1 full, 2 heavy
+  delegate: cpu # cpu | gpu (experimental, Metal on Apple Silicon)
+  model_complexity: 0 # 0 lite (fast), 1 full, 2 heavy
   min_detection_confidence: 0.55
   min_tracking_confidence: 0.55
   inference_fps: 20
@@ -45,7 +45,7 @@ alert:
   same_fault_cooldown_ms: 2500
   max_alerts_per_rep: 2
   max_alerts_per_set: 30
-  voice_rate: 222     # 1.2x default (185)
+  voice_rate: 222 # 1.2x default (185)
   voice_volume: 1.0
 
 ui:
